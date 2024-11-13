@@ -3,7 +3,7 @@
  It contains a ton of various boilerplate code usable in various addons
 
 > [!NOTE]  
-> Thorium *can* be reuploaded to workshop, but only in your own addon item. Whenever possible, use the workshop version to keep credit. \
+> Thorium *can* be reuploaded to workshop, but only with your own addon item. Whenever possible, use the workshop version to keep credit. \
 > See [LICENSE](https://github.com/Def-Try/thorium/blob/main/LICENSE) for more info
 
 ### Quick Start
