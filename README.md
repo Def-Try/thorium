@@ -7,9 +7,9 @@
 > See [LICENSE](https://github.com/Def-Try/thorium/blob/main/LICENSE) for more info
 
 ### Quick Start
- * Getting started (Coming soon)
- * Code examples (Coming soon)
- * Wiki page (Coming soon)
+ * [Getting Started](https://github.com/Def-Try/thorium/wiki/Getting-started)
+ * [Code Examples](https://github.com/Def-Try/thorium/blob/main/examples)
+ * [Wiki page](https://github.com/Def-Try/thorium/wiki)
  * FAQ (Coming soon)
 
 ### Documentation
