@@ -38,7 +38,7 @@ local Vector = Vector
 local Angle = Angle
 local Color = Color
 
----Access point to BitBuffer objects
+---Access point to BytBuffer objects
 ---@class gbuffer
 local gbuffer = {}
 thorium.gbuffer = gbuffer
@@ -60,15 +60,15 @@ local function grab_byte(v)
 	return math_floor(v / 256), string_char(math_floor(v) % 256)
 end
 
----Creates new BitBuffer
----@param o? table Optional, table to base BitBuffer on
+---Creates new ByteBuffer
+---@param o? table Optional, table to base ByteBuffer on
 ---@return ByteBuffer
 function gbuffer.New(o)
 	return buffer:New(o)
 end
 
----Creates new BitBuffer
----@param this? table Optional, table to base BitBuffer on
+---Creates new ByteBuffer
+---@param this? table Optional, table to base ByteBuffer on
 ---@return ByteBuffer
 function buffer:New(this)
 	this = this or {}

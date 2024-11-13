@@ -80,6 +80,9 @@ function COLOR:Invert(invert_alpha)
     return Color(255 - self.r, 255 - self.g, 255 - self.b, invert_alpha and 255 - self.a or self.a)
 end
 
+---Sets color brightess
+---@param bright number
+---@return Color
 function COLOR:SetBrightness(bright)
     local h, s, l = ColorToHSL(self)
 	l = math_Clamp(bright / 255, 0, 1)

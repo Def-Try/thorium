@@ -506,3 +506,57 @@ Access point to Random objects
 
 # Field `thorium.nwvars: GNWVars`
 NetWork Variables utilities
+
+### `ByteBuffer.WriteRAW(self: ByteBuffer) -> data: string`
+Appends raw data (string) to buffer.
+
+### `ByteBuffer.WriteBool(self: ByteBuffer, bool: boolean) -> self: ByteBuffer`
+Writes a boolean. Writes 1 byte
+
+### `ByteBuffer.WriteUByte(self: ByteBuffer, num: integer) -> self: ByteBuffer`
+Writes unsigned byte. Writes 1 byte
+
+### `ByteBuffer.WriteUShort(self: ByteBuffer, num: integer) -> self: ByteBuffer`
+Writes unsigned short. Writes 2 bytes
+
+### `ByteBuffer.WriteUInt(self: ByteBuffer, num: integer) -> self: ByteBuffer`
+Writes unsigned integer. Writes 4 bytes
+
+### `ByteBuffer.WriteByte(self: ByteBuffer, num: integer) -> self: ByteBuffer`
+Writes signed byte. Writes 1 byte
+
+### `ByteBuffer.WriteShort(self: ByteBuffer, num: integer) -> self: ByteBuffer`
+Writes signed short. Writes 2 bytes
+
+### `ByteBuffer.WriteInt(self: ByteBuffer, num: integer) -> self: ByteBuffer`
+Writes signed integer. Writes 4 bytes
+
+### `ByteBuffer.WriteVarInt(self: ByteBuffer, num: integer) -> self: ByteBuffer`
+Writes VarInt. Writes variable amount of bytes
+
+### `ByteBuffer.WriteFloat(self: ByteBuffer, x: number) -> self: ByteBuffer`
+Writes single-precision float. Writes 4 bytes
+
+### `ByteBuffer.WriteDouble(self: ByteBuffer, x: number) -> self: ByteBuffer`
+Writes double-precision float. Writes 8 bytes
+
+### `ByteBuffer.WriteStringLP(self: ByteBuffer, str: string) -> self: ByteBuffer`
+Writes length prefixed string. Writes #str + 2 bytes
+
+### `ByteBuffer.WriteStringNT(self: ByteBuffer, str: string) -> self: ByteBuffer`
+Writes null terminated string. Writes #str + 1 bytes
+
+### `ByteBuffer.WriteAngle(self: ByteBuffer, ang: Angle) -> self: ByteBuffer`
+Writes angle. Writes 12 bytes
+
+### `ByteBuffer.WriteColor(self: ByteBuffer, clr: Color) -> self: ByteBuffer`
+Writes color. Writes 4 bytes
+
+### `ByteBuffer.WriteVector(self: ByteBuffer, vec: Vector) -> self: ByteBuffer`
+Writes vector. Writes 12 bytes
+
+### `ByteBuffer.WriteTable(self: ByteBuffer, tbl: table) -> self: ByteBuffer`
+Writes table to buffer. Writes variable amount of bytes
+
+### `ByteBuffer.WriteType(self: ByteBuffer, v: any) -> self: ByteBuffer`
+Attempts to write a variable type. Writes variable amount of bytes
