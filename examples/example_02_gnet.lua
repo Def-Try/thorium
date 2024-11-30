@@ -1,31 +1,31 @@
-hook.Add("ThoriumReady", "MyAddon_ThoriumReady", function()
-    local gnet = thorium.gnet
+require("thorium")
 
-    if CLIENT then
-        -- create a receiver for our message
-        gnet.Receive("chat", function(handle, size, from)
-            -- handle is NetHandle and is derived from ByteBuffer, so we can use it's methods
-            local from = handle:ReadEntity()
-            local message = handle:ReadStringNT()
-        
-            assert(from == LocalPlayer(), "we got a message from somebody else!")
-            assert(message == "hello, me!", "we got something else!")
-        end)
-        return -- we don't do anything on client anymore
-    end
+local gnet = thorium.gnet
 
-    -- let's send the message!
+if CLIENT then
+    -- create a receiver for our message
+    gnet.Receive("chat", function(handle, size, from)
+        -- handle is NetHandle and is derived from ByteBuffer, so we can use it's methods
+        local from = handle:ReadEntity()
+        local message = handle:ReadStringNT()
+    
+        assert(from == LocalPlayer(), "we got a message from somebody else!")
+        assert(message == "hello, me!", "we got something else!")
+    end)
+    return -- we don't do anything on client anymore
+end
 
-    -- gnet.Start returns a NetHandle. we don't have to send message right away, we can delay it infinitely!
-    local handle = gnet.Start("chat")
-    -- NetHandle and is derived from ByteBuffer, so we can use it's methods
-    handle:WriteEntity(Entity(1))
-    handle:WriteStringNT("hello, me!")
+-- let's send the message!
 
-    -- gnet.Send actually sends our message. after that, we should dispose of our handle
-    -- (to make sure that we don't accidentally corrupt it!)
-    gnet.Send(handle, Entity(1))
+-- gnet.Start returns a NetHandle. we don't have to send message right away, we can delay it infinitely!
+local handle = gnet.Start("chat")
+-- NetHandle and is derived from ByteBuffer, so we can use it's methods
+handle:WriteEntity(Entity(1))
+handle:WriteStringNT("hello, me!")
 
-    ---@diagnostic disable-next-line: cast-local-type
-    handle = nil
-end)
+-- gnet.Send actually sends our message. after that, we should dispose of our handle
+-- (to make sure that we don't accidentally corrupt it!)
+gnet.Send(handle, Entity(1))
+
+---@diagnostic disable-next-line: cast-local-type
+handle = nil

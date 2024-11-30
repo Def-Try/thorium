@@ -284,6 +284,7 @@ function buffer:ReadInt()
 	return self:ReadUInt() - 2147483648
 end
 
+
 ---Writes null terminated string. Writes #str + 1 bytes
 ---@param str string
 ---@return ByteBuffer self Same buffer, for chaining
@@ -573,3 +574,20 @@ end
 
 buffer.TYPETABLE_read[TYPE_TABLE] = buffer.ReadTable
 buffer.TYPETABLE_write[TYPE_TABLE] = buffer.WriteTable
+
+---Reads a file into a ByteBuffer
+---@param path string
+---@param gamepath string
+---@return ByteBuffer|nil ByteBuffer on success, or nil
+function gbuffer.ReadFromFile(path, gamepath)
+	if not file.Exists(path, gamepath) then return end
+	local buf = gbuffer.New()
+	buf:WriteRAW(file.Read(path, gamepath))
+	return buf
+end
+
+---Writes ByteBuffer into a file
+---@param path string
+function buffer:WriteToFile(path)
+	file.Write(path, self.data)
+end
