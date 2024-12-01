@@ -13,7 +13,6 @@
  * FAQ (Coming soon)
 
 ### Documentation
- * [Raw, generated MD doc](https://github.com/Def-Try/thorium/blob/main/doc/template_doc.md)
  * **[ByteBuffer - Binary Data Handle](https://github.com/Def-Try/thorium/wiki/ByteBuffer)**
  * **[G-Net - Better Net Abstraction](https://github.com/Def-Try/thorium/wiki/GNet)**
  * **[G-Locale - Localisation Module](https://github.com/Def-Try/thorium/wiki/GLocale)**
