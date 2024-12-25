@@ -87,11 +87,13 @@ end
 ---If on server, and target is set to "BROADCAST", will broadcast to everyone
 ---If callbacks table is supplied, function with key "progress" gets called every time that new chunk is transmitted. (arguments are message, handle, and pointer)
 ---If callbacks table is supplied, function with key "done" gets called once every fragment of message was transmitted. (arguments are message and handle)
+---Returns transfer id or nil, if transfer was completed immediately
 ---@param handle NetHandle|ByteBuffer NetNandle to send
 ---@param target Player|Entity|string Target to send the NetHandle to. 
 ---@param docompress? boolean Allow compression
 ---@param dochunk? boolean Allow chunking
 ---@param callbacks? table Callbacks table.
+---@return number|nil
 function gnet.Send(handle, target, docompress, dochunk, callbacks)
     if dochunk == nil then dochunk = handle:Size() > 2^15-1 end
     if docompress == nil then docompress = handle:Size() > 2^15-1 end
@@ -147,6 +149,7 @@ function gnet.Send(handle, target, docompress, dochunk, callbacks)
     else
         net.Broadcast()
     end
+    return transferid
 end
 
 ---Adds a net message handler. Only one receiver can be used to receive the message <br>
@@ -155,6 +158,15 @@ end
 ---@param callback function
 function gnet.Receive(message, callback)
     receivers[message] = callback
+end
+
+--- Gets NetHandle by transfer ID. If you are going to use this function, please note that
+--- - it's your responsibility to keep pointer in the right place after your code returns.
+--- - GNet network messages are not validated on other end
+---@param transid number
+---@return NetHandle|nil
+function gnet.GetByTransferID(transid)
+    return queue_send[transid] or queue_recv[transid]
 end
 
 hook.Add("Think", "THORIUM_NETWORK_PROCESS_SEND_QUEUE", function()
@@ -327,7 +339,7 @@ net.Receive("THORIUM_NETWORK_END", function(len, ply)
     end
     item[6]:Seek(0)
     receivers[((CLIENT and item[5]) and "p2p_" or "")..item[1]](item[6], item[2], item[5])
-    hook.Run("Thorium_NetworkMessageEnd", item[1], transferid)
+    hook.Run("Thorium_NetworkMessageEnd", item[1], item[6]:Size(), transferid)
 end)
 
 ---A better abstraction over default garrysmod net: compatibility layer.
