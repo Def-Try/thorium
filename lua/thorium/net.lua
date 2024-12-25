@@ -85,11 +85,14 @@ end
 ---Sends a NetHandle over network
 ---If on client, and target is not set, set to Entity(0) or "SERVER" will send to server.
 ---If on server, and target is set to "BROADCAST", will broadcast to everyone
+---If callbacks table is supplied, function with key "progress" gets called every time that new chunk is transmitted. (arguments are message, handle, and pointer)
+---If callbacks table is supplied, function with key "done" gets called once every fragment of message was transmitted. (arguments are message and handle)
 ---@param handle NetHandle|ByteBuffer NetNandle to send
 ---@param target Player|Entity|string Target to send the NetHandle to. 
 ---@param docompress? boolean Allow compression
 ---@param dochunk? boolean Allow chunking
-function gnet.Send(handle, target, docompress, dochunk)
+---@param callbacks? table Callbacks table.
+function gnet.Send(handle, target, docompress, dochunk, callbacks)
     if dochunk == nil then dochunk = handle:Size() > 2^15-1 end
     if docompress == nil then docompress = handle:Size() > 2^15-1 end
     handle:Seek(0)
@@ -120,10 +123,11 @@ function gnet.Send(handle, target, docompress, dochunk)
                     net.Broadcast()
                 end
             end
+        if callbacks and callbacks["done"] then callbacks["done"](handle.message, handle) end
         return
     end
     local transferid = math_random(0, 2^32-1)
-    queue_send[transferid] = {handle, target, docompress}
+    queue_send[transferid] = {handle, target, docompress, callbacks}
     net.Start("THORIUM_NETWORK_START")
         net.WriteUInt(transferid, 16)
         net.WriteString(handle.message)
@@ -158,7 +162,7 @@ hook.Add("Think", "THORIUM_NETWORK_PROCESS_SEND_QUEUE", function()
     local transferid = keys[math_random(1, #keys-1)]
     local item = queue_send[transferid]
     if not item then return end
-    local handle, target, compress = item[1], item[2], item[3]
+    local handle, target, compress, callbacks = item[1], item[2], item[3], item[4]
 
     net.Start("THORIUM_NETWORK_CHUNK")
         net.WriteUInt(transferid, 16)
@@ -176,6 +180,12 @@ hook.Add("Think", "THORIUM_NETWORK_PROCESS_SEND_QUEUE", function()
             net.Broadcast()
         end
     end
+    if callbacks and callbacks["progress"] then
+        local noerr, err = pcall(callbacks["progress"], handle.message, handle, handle:Tell())
+        if not noerr then
+            ErrorNoHalt(err)
+        end
+    end
 
     if not handle:EndOfBuffer() then return end
     net.Start("THORIUM_NETWORK_END")
@@ -189,6 +199,7 @@ hook.Add("Think", "THORIUM_NETWORK_PROCESS_SEND_QUEUE", function()
         end
     end
     queue_send[transferid] = nil
+    if callbacks and callbacks["done"] then callbacks["done"](handle.message, handle) end
 end)
 
 net.Receive("THORIUM_NETWORK_WHOLE", function(len, ply)
@@ -226,6 +237,7 @@ net.Receive("THORIUM_NETWORK_WHOLE", function(len, ply)
     handle:WriteRAW(data)
     handle:Seek(0)
     receivers[((CLIENT and from) and "p2p_" or "")..message](handle, handle:Size(), SERVER and ply or from)
+    hook.Run("Thorium_NetworkMessageReceived", handle.message, handle:Size())
 end)
 
 net.Receive("THORIUM_NETWORK_START", function(len, ply)
@@ -259,6 +271,7 @@ net.Receive("THORIUM_NETWORK_START", function(len, ply)
         return
     end
     queue_recv[transferid][6] = New(message)
+    hook.Run("Thorium_NetworkMessageBegin", message, size, transferid)
 end)
 
 net.Receive("THORIUM_NETWORK_CHUNK", function(len, ply)
@@ -289,6 +302,7 @@ net.Receive("THORIUM_NETWORK_CHUNK", function(len, ply)
         data = util.Decompress(data)
     end
     item[6]:WriteRAW(data)
+    hook.Run("Thorium_NetworkMessageChunk", item[1], #data, transferid)
 end)
 
 net.Receive("THORIUM_NETWORK_END", function(len, ply)
@@ -313,6 +327,7 @@ net.Receive("THORIUM_NETWORK_END", function(len, ply)
     end
     item[6]:Seek(0)
     receivers[((CLIENT and item[5]) and "p2p_" or "")..item[1]](item[6], item[2], item[5])
+    hook.Run("Thorium_NetworkMessageEnd", item[1], transferid)
 end)
 
 ---A better abstraction over default garrysmod net: compatibility layer.
