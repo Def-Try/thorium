@@ -19,7 +19,8 @@
    [ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
    [ SOFTWARE.
    []]
-   
+
+AddCSLuaFile()
 local print = print
 local fmt = string.format
 local string = string
@@ -89,7 +90,7 @@ function LoadCapability(file, capability, client, cap_ver)
     return success, err
 end
 
-print(fmt("[THORIUM] Loading thorium %s...", VERSION))
+print(fmt("[THORIUM] Loading thorium %s...", l_VERSION))
 
 LoadCapability("thorium/buffer.lua", "bytebuffer", true, "1.0.0")
 LoadCapability("thorium/net.lua", "net", true, "1.0.0")
@@ -101,7 +102,7 @@ LoadCapability("extensions/thorium/print.lua", "ext_print", true, "1.0.0")
 LoadCapability("extensions/thorium/color.lua", "ext_color", true, "1.0.0")
 LoadCapability("extensions/thorium/nwvars.lua", "ext_nwvar", true, "1.0.0")
 
-printf("[THORIUM] Thorium %s ready!", VERSION)
+printf("[THORIUM] Thorium %s ready!", l_VERSION)
 
 module("thorium")
 

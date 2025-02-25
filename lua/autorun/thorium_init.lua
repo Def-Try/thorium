@@ -26,3 +26,5 @@ print("[THORIUM] By using this library server owner has agreed to the License")
 -- COPYRIGHT NOTICE CODE END
 
 AddCSLuaFile()
+
+require("thorium")
