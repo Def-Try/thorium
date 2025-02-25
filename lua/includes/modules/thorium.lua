@@ -33,20 +33,18 @@ local AddCSLuaFile = AddCSLuaFile
 local include = include
 local pcall = pcall
 
-module("thorium")
-
 ---Thorium version
 ---@type string
-VERSION = "0.1.0"
+local l_VERSION = "0.1.0"
 ---Thorium capabilities
 ---@type table
-CAPABILITIES = {}
+local l_CAPABILITIES = {}
 
 ---Checks if Thorium has capability loaded
 ---@param capability string capability to check
 function HasCapability(capability)
     if not capability then return false end
-    return CAPABILITIES[capability] ~= nil
+    return l_CAPABILITIES[capability] ~= nil
 end
 
 ---Gets capability version
@@ -54,7 +52,7 @@ end
 ---@return string version
 function GetCapabilityVersion(capability)
     if not capability then return "0.0.0" end
-    local ver = CAPABILITIES[capability]
+    local ver = l_CAPABILITIES[capability]
     if isnumber(ver) then ver = tostring(ver) end
     if not isstring(ver) then ver = "1.0.0" end
     return ver
@@ -84,7 +82,7 @@ function LoadCapability(file, capability, client, cap_ver)
     end)
     if success then
         Msg("OK\n")
-        CAPABILITIES[capability] = cap_ver or true
+        l_CAPABILITIES[capability] = cap_ver or true
     else
         Msg("error: ", err, "\n")
     end
@@ -104,3 +102,8 @@ LoadCapability("extensions/thorium/color.lua", "ext_color", true, "1.0.0")
 LoadCapability("extensions/thorium/nwvars.lua", "ext_nwvar", true, "1.0.0")
 
 printf("[THORIUM] Thorium %s ready!", VERSION)
+
+module("thorium")
+
+VERSION      = l_VERSION
+CAPABILITIES = l_CAPABILITIES
