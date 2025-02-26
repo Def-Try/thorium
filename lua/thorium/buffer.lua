@@ -149,7 +149,7 @@ end
 function buffer:Seek(seek_to)
 	expect(seek_to, "number")
 
-	self.pointer = seek_to % #self.size
+	self.pointer = seek_to % self.size
 	return self
 end
 
