@@ -45,12 +45,17 @@ thorium.gbuffer = gbuffer
 
 ---Class used to read and write binary data
 ---@class ByteBuffer
----@field data string
+---@field chunks table<string>
+---@field chunk_size integer
 ---@field size integer
 ---@field pointer integer
 ---@field TYPETABLE_read table
 ---@field TYPETABLE_write table
-local buffer = {data="", size=0, pointer=0, TYPETABLE_read={}, TYPETABLE_write={}}
+local buffer = {
+				size=0, pointer=0,
+				TYPETABLE_read={}, TYPETABLE_write={},
+				chunks={""}, chunk_size=1024
+			   }
 
 local function expect(arg, typ)
 	assert(type(arg)==typ, "expected "..typ..", got "..type(arg))
@@ -88,9 +93,22 @@ end
 function buffer:WriteRAW(data)
 	expect(data, "string")
 
-	self.data = self.data..data
 	self.size = self.size+#data
 	self.pointer = self.size
+
+	local last_chunk = self.chunks[#self.chunks]
+
+	if #last_chunk + #data <= self.chunk_size then
+		self.chunks[#self.chunks] = last_chunk..data
+		return self
+	end
+
+	local wrote = self.chunk_size - #last_chunk
+	self.chunks[#self.chunks] = last_chunk .. string_sub(data, 1, wrote)
+
+	for i=wrote,#data,self.chunk_size do
+		self.chunks[#self.chunks+1] = string_sub(data, i, i+self.chunk_size)
+	end
 
 	return self
 end
@@ -101,9 +119,27 @@ end
 function buffer:ReadRAW(amount)
 	expect(amount, "number")
 
-	local data = string_sub(self.data, self.pointer+1, self.pointer + amount)
+	local chunk_n = math.floor(self.pointer / self.chunk_size)
+
+	local read_bytes = 0
+	local result = {}
+	local offset = self.pointer - chunk_n * self.chunk_size
+
+	while read_bytes < amount do
+		local chunk = self.chunks[chunk_n+1]
+		if not chunk then break end
+		result[#result+1] = string_sub(chunk, offset)
+		read_bytes = read_bytes + #result[#result]
+		if read_bytes > amount then
+			result[#result] = string_sub(result[#result], 1, self.chunk_size - (read_bytes - amount))
+		end
+
+		offset = 0
+		chunk_n = chunk_n + 1
+  	end
+
 	self.pointer = self.pointer + amount
-	return data
+	return table.concat(result, "")
 end
 
 ---Seeks (moves pointer) to a position in buffer.
@@ -113,7 +149,7 @@ end
 function buffer:Seek(seek_to)
 	expect(seek_to, "number")
 
-	self.pointer = seek_to % #self.data
+	self.pointer = seek_to % #self.size
 	return self
 end
 
@@ -589,5 +625,19 @@ end
 ---Writes ByteBuffer into a file
 ---@param path string
 function buffer:WriteToFile(path)
-	file.Write(path, self.data)
+	file.Write(path, "")
+	local id = math.random(100000, 999999)
+	self:Seek(0)
+	--[[
+	timer.Create("THORIUM_FileWrite_"..id, 0, 0, function()
+		if self:EndOfBuffer() then
+			timer.Remove("THORIUM_FileWrite_"..id)
+			return
+		end
+		file.Append(path, self:ReadRAW(1024))
+	end)
+	]]
+	while not self:EndOfBuffer() do
+		file.Append(path, self:ReadRAW(1024))
+	end
 end

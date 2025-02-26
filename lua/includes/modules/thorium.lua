@@ -34,6 +34,8 @@ local AddCSLuaFile = AddCSLuaFile
 local include = include
 local pcall = pcall
 
+thorium = {}
+
 ---Thorium version
 ---@type string
 local l_VERSION = "0.1.0"
