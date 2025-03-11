@@ -54,7 +54,7 @@ thorium.gbuffer = gbuffer
 local buffer = {
 				size=0, pointer=0,
 				TYPETABLE_read={}, TYPETABLE_write={},
-				chunks={""}, chunk_size=1024
+				chunk_size=1024
 			   }
 
 local function expect(arg, typ)
@@ -79,6 +79,7 @@ function buffer:New(this)
 	this = this or {}
     setmetatable(this, self)
 	self.__index = self
+	this.chunks = {""}
     return this
 end
 
@@ -123,15 +124,15 @@ function buffer:ReadRAW(amount)
 
 	local read_bytes = 0
 	local result = {}
-	local offset = self.pointer - chunk_n * self.chunk_size
+	local offset = (self.pointer - chunk_n * self.chunk_size)
 
 	while read_bytes < amount do
 		local chunk = self.chunks[chunk_n+1]
 		if not chunk then break end
-		result[#result+1] = string_sub(chunk, offset)
+		result[#result+1] = string_sub(chunk, offset+1)
 		read_bytes = read_bytes + #result[#result]
 		if read_bytes > amount then
-			result[#result] = string_sub(result[#result], 1, self.chunk_size - (read_bytes - amount))
+			result[#result] = string_sub(result[#result], 1, #chunk - (read_bytes - amount) - offset)
 		end
 
 		offset = 0

@@ -40,6 +40,7 @@ if SERVER then
 end
 
 local queue_send, queue_recv, receivers = {}, {}, {}
+gnet.Receivers = gnet.Receivers or receivers
 
 ---@class NetHandle: ByteBuffer
 ---@field message string
@@ -102,9 +103,15 @@ function gnet.Send(handle, target, docompress, dochunk, callbacks)
         if handle:Size() > 2^16-1025 then -- 63kb, with safe margin
             error("Too much data to send, consider chunking or compressing")
         end
+        local has_target = CLIENT and not (target ~= nil or target ~= "SERVER" or target ~= game.GetWorld())
         net.Start("THORIUM_NETWORK_WHOLE")
             net.WriteString(handle.message)
             net.WriteBool(docompress)
+            net.WriteBool(has_target)
+            if has_target then
+                ---@cast target Player
+                net.WriteEntity(target)
+            end
             local data = handle:ReadRAW(handle:Size())
             if docompress then
                 data = util.Compress(data)
@@ -112,10 +119,6 @@ function gnet.Send(handle, target, docompress, dochunk, callbacks)
             net.WriteUInt(#data, 32)
             net.WriteData(data)
             if CLIENT then
-                if target ~= nil or target ~= "SERVER" or target ~= game.GetWorld() then
-                    ---@cast target Player
-                    net.WriteEntity(target)
-                end
                 net.SendToServer()
             else
                 if target ~= "BROADCAST" then
@@ -217,23 +220,25 @@ end)
 net.Receive("THORIUM_NETWORK_WHOLE", function(len, ply)
     local message = net.ReadString()
     local compressed = net.ReadBool()
-    local amount = net.ReadUInt(32)
-    local data = net.ReadData(amount)
+    local has_target = net.ReadBool()
     local target, from
-    if net.BytesLeft() > 0 then
+    if has_target then
         if SERVER then
             target = net.ReadEntity()
         else
             from = net.ReadEntity()
         end
     end
+    local amount = net.ReadUInt(32)
+    local data = net.ReadData(amount)
     if target then
         net.Start("THORIUM_NETWORK_WHOLE")
             net.WriteString(message)
             net.WriteBool(compressed)
+            net.WriteBool(true)
+            net.WriteEntity(ply)
             net.WriteUInt(amount, 32)
             net.WriteData(data)
-            net.WriteEntity(ply)
         if target ~= "BROADCAST" then
             ---@cast target Player
             net.Send(target)
@@ -242,13 +247,22 @@ net.Receive("THORIUM_NETWORK_WHOLE", function(len, ply)
         end
         return
     end
+
     local handle = New(message)
     if compressed then
         data = util.Decompress(data)
     end
     handle:WriteRAW(data)
     handle:Seek(0)
-    receivers[((CLIENT and from) and "p2p_" or "")..message](handle, handle:Size(), SERVER and ply or from)
+    local msg = ((CLIENT and from) and "p2p_" or "")..message
+    local receiver = receivers[msg]
+    if receiver then
+        receiver(handle, handle:Size(), SERVER and ply or from)
+    else
+        printf("[THORIUM] No receiver for message %s setup!", msg)
+        printf("[THORIUM] p2p=%s", (CLIENT and from) and "yes" or "no")
+        printf("[THORIUM] from=%s", tostring(from))
+    end
     hook.Run("Thorium_NetworkMessageReceived", handle.message, handle:Size())
 end)
 
@@ -261,8 +275,10 @@ net.Receive("THORIUM_NETWORK_START", function(len, ply)
     if net.BytesLeft() > 0 then
         if SERVER then
             target = net.ReadEntity()
+            if not IsValid(target) then target = nil end
         else
             from = net.ReadEntity()
+            if not IsValid(from) then from = nil end
         end
     end
     queue_recv[transferid] = {message, size, compressed,
