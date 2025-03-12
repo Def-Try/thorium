@@ -105,9 +105,13 @@ function buffer:WriteRAW(data)
 	end
 
 	local wrote = self.chunk_size - #last_chunk
-	self.chunks[#self.chunks] = last_chunk .. string_sub(data, 1, wrote)
+	if wrote ~= 0 then
+		self.chunks[#self.chunks] = last_chunk .. string_sub(data, 1, wrote)
+	else
+		wrote = 1
+	end
 
-	for i=wrote,#data,self.chunk_size do
+	for i=wrote,#data,self.chunk_size+1 do
 		self.chunks[#self.chunks+1] = string_sub(data, i, i+self.chunk_size)
 	end
 
@@ -124,23 +128,25 @@ function buffer:ReadRAW(amount)
 
 	local read_bytes = 0
 	local result = {}
-	local offset = (self.pointer - chunk_n * self.chunk_size)
+	local offset = (self.pointer - chunk_n * self.chunk_size) + chunk_n - 1
 
 	while read_bytes < amount do
 		local chunk = self.chunks[chunk_n+1]
 		if not chunk then break end
-		result[#result+1] = string_sub(chunk, offset+1)
+		result[#result+1] = string_sub(chunk, offset+2)
 		read_bytes = read_bytes + #result[#result]
 		if read_bytes > amount then
-			result[#result] = string_sub(result[#result], 1, #chunk - (read_bytes - amount) - offset)
+			result[#result] = string_sub(result[#result], 1, #chunk - (read_bytes - amount) - offset - 1)
+			read_bytes = amount
 		end
 
 		offset = 0
 		chunk_n = chunk_n + 1
   	end
 
-	self.pointer = self.pointer + amount
-	return table.concat(result, "")
+	local raw = table.concat(result, "")
+	self.pointer = self.pointer + #raw
+	return raw
 end
 
 ---Seeks (moves pointer) to a position in buffer.
@@ -188,7 +194,7 @@ end
 ---Clears buffer, removing all data from it
 ---@return ByteBuffer self Same buffer, for chaining
 function buffer:Clear()
-    self.data = ""
+    self.chunks = {}
     self.size = 0
     self.pointer = 0
 	return self
