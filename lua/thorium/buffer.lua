@@ -128,7 +128,7 @@ function buffer:ReadRAW(amount)
 
 	local read_bytes = 0
 	local result = {}
-	local offset = (self.pointer - chunk_n * self.chunk_size) + chunk_n - 1
+	local offset = (self.pointer - chunk_n * self.chunk_size) - 1
 
 	while read_bytes < amount do
 		local chunk = self.chunks[chunk_n+1]
