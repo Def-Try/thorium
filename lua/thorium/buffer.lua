@@ -88,33 +88,33 @@ function buffer:__tostring()
     return string_format("[Buffer size=%s]", self:Size())
 end
 
+-- buffer:ReadRAW and buffer:WriteRAW generously provided by today's sponsor:
+--     chatgpt! 
+
 ---Appends raw data (string) to buffer.
 ---@param data string Data to write to buffer
 ---@return ByteBuffer self Same buffer, for chaining
 function buffer:WriteRAW(data)
-	expect(data, "string")
+    local data_length = #data
+    local offset = 1
+    while offset <= data_length do
+        local space_in_last_chunk = self.chunk_size
+        if #self.chunks > 0 then
+            space_in_last_chunk = self.chunk_size - #self.chunks[#self.chunks]
+        end
 
-	self.size = self.size+#data
-	self.pointer = self.size
+        local write_size = math.min(data_length - offset + 1, space_in_last_chunk)
+        local chunk = string.sub(data, offset, offset + write_size - 1)
 
-	local last_chunk = self.chunks[#self.chunks]
+        if #self.chunks == 0 or #self.chunks[#self.chunks] == self.chunk_size then
+            table.insert(self.chunks, chunk)
+        else
+            self.chunks[#self.chunks] = self.chunks[#self.chunks] .. chunk
+        end
 
-	if #last_chunk + #data <= self.chunk_size then
-		self.chunks[#self.chunks] = last_chunk..data
-		return self
-	end
-
-	local wrote = self.chunk_size - #last_chunk
-	if wrote ~= 0 then
-		self.chunks[#self.chunks] = last_chunk .. string_sub(data, 1, wrote)
-	else
-		wrote = 1
-	end
-
-	for i=wrote,#data,self.chunk_size+1 do
-		self.chunks[#self.chunks+1] = string_sub(data, i, i+self.chunk_size)
-	end
-
+        self.size = self.size + write_size
+        offset = offset + write_size
+    end
 	return self
 end
 
@@ -122,31 +122,44 @@ end
 ---@param amount integer How much bytes to read
 ---@return string data Data that has been read
 function buffer:ReadRAW(amount)
-	expect(amount, "number")
+    if self.size == 0 or self.pointer > self.size then
+        return ""
+    end
 
-	local chunk_n = math.floor(self.pointer / self.chunk_size)
+    local data = ""
+    local remaining = amount
+    local chunk_index = 1  -- Start at the first chunk
+    local chunk_offset = 0 -- Offset within the chunk
 
-	local read_bytes = 0
-	local result = {}
-	local offset = (self.pointer - chunk_n * self.chunk_size) - 1
+    -- Figure out which chunk the pointer is currently in and its offset
+    local current_pointer = self.pointer
+    for i, chunk in ipairs(self.chunks) do
+        local chunk_length = #chunk
+        if current_pointer <= chunk_length then
+            chunk_index = i
+            chunk_offset = current_pointer - 1
+            break
+        else
+            current_pointer = current_pointer - chunk_length
+        end
+    end
 
-	while read_bytes < amount do
-		local chunk = self.chunks[chunk_n+1]
-		if not chunk then break end
-		result[#result+1] = string_sub(chunk, offset+2)
-		read_bytes = read_bytes + #result[#result]
-		if read_bytes > amount then
-			result[#result] = string_sub(result[#result], 1, #chunk - (read_bytes - amount) - offset - 1)
-			read_bytes = amount
-		end
 
-		offset = 0
-		chunk_n = chunk_n + 1
-  	end
+    while remaining > 0 and chunk_index <= #self.chunks do
+        local chunk = self.chunks[chunk_index]
+        local chunk_length = #chunk
+        local read_from_chunk = math.min(remaining, chunk_length - chunk_offset) -- how much to read from current chunk
 
-	local raw = table.concat(result, "")
-	self.pointer = self.pointer + #raw
-	return raw
+        data = data .. string.sub(chunk, chunk_offset + 1, chunk_offset + read_from_chunk)
+
+        remaining = remaining - read_from_chunk
+        self.pointer = self.pointer + read_from_chunk -- Move the pointer
+
+        chunk_index = chunk_index + 1
+        chunk_offset = 0
+    end
+
+    return data
 end
 
 ---Seeks (moves pointer) to a position in buffer.
@@ -180,7 +193,7 @@ end
 ---Returns whether we are at the end of buffer or not
 ---@return boolean endofbuffer Are we at the end of buffer
 function buffer:EndOfBuffer()
-    return self:Tell() >= self:Size()
+    return self:Tell() > self:Size()
 end
 
 ---Skips some amount of bytes, same as buffer:Seek(buffer:Tell()+bytes)
