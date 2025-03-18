@@ -132,7 +132,7 @@ function buffer:ReadRAW(amount)
     local chunk_offset = 0 -- Offset within the chunk
 
     -- Figure out which chunk the pointer is currently in and its offset
-    local current_pointer = self.pointer
+    local current_pointer = self.pointer+1
     for i, chunk in ipairs(self.chunks) do
         local chunk_length = #chunk
         if current_pointer <= chunk_length then
