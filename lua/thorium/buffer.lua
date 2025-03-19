@@ -602,7 +602,7 @@ function buffer:WriteTable(tbl)
 		return self
 	end
 	self:WriteBool(false)
-	self:WriteVarInt(#tbl:GetKeys())
+	self:WriteVarInt(#table.GetKeys(tbl))
 	for k,v in pairs(tbl) do
 		self:WriteType(k)
 		self:WriteType(v)
