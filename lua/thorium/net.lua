@@ -96,8 +96,8 @@ end
 ---@param callbacks? table Callbacks table.
 ---@return number|nil
 function gnet.Send(handle, target, docompress, dochunk, callbacks)
-    if dochunk == nil then dochunk = handle:Size() > 2^15-1 end
-    if docompress == nil then docompress = handle:Size() > 2^15-1 end
+    if dochunk == nil then dochunk = handle:Size() > 2^13-1 end
+    if docompress == nil then docompress = handle:Size() > 2^13-1 end
     handle:Seek(0)
     if not dochunk then
         if handle:Size() > 2^16-1025 then -- 63kb, with safe margin
@@ -129,6 +129,7 @@ function gnet.Send(handle, target, docompress, dochunk, callbacks)
                 end
             end
         if callbacks and callbacks["done"] then callbacks["done"](handle.message, handle) end
+        hook.Run("Thorium_NetworkMessageSent", handle.message, handle:Size(), handle)
         return
     end
     local transferid = math_random(0, 2^32-1)
@@ -143,6 +144,7 @@ function gnet.Send(handle, target, docompress, dochunk, callbacks)
                 ---@cast target Player
                 net.WriteEntity(target)
             end
+            hook.Run("Thorium_NetworkMessageSendBegin", handle.message, handle:Size(), handle, transferid)
             net.SendToServer()
             return
         end
@@ -152,6 +154,7 @@ function gnet.Send(handle, target, docompress, dochunk, callbacks)
     else
         net.Broadcast()
     end
+    hook.Run("Thorium_NetworkMessageSendBegin", handle.message, handle:Size(), handle, transferid)
     return transferid
 end
 
@@ -181,7 +184,7 @@ hook.Add("Think", "THORIUM_NETWORK_PROCESS_SEND_QUEUE", function()
 
     net.Start("THORIUM_NETWORK_CHUNK")
         net.WriteUInt(transferid, 16)
-        local data = handle:ReadRAW(2^15-1) -- about 32kb
+        local data = handle:ReadRAW(2^13-1) -- about 32kb
         if compress then
             data = util.Compress(data)
         end
@@ -195,6 +198,7 @@ hook.Add("Think", "THORIUM_NETWORK_PROCESS_SEND_QUEUE", function()
             net.Broadcast()
         end
     end
+    hook.Run("Thorium_NetworkMessageSendChunk", handle.message, handle:Size(), handle:Tell(), handle, transferid)
     if callbacks and callbacks["progress"] then
         local noerr, err = pcall(callbacks["progress"], handle.message, handle, handle:Tell())
         if not noerr then
@@ -214,6 +218,7 @@ hook.Add("Think", "THORIUM_NETWORK_PROCESS_SEND_QUEUE", function()
         end
     end
     queue_send[transferid] = nil
+    hook.Run("Thorium_NetworkMessageSendEnd", handle.message, handle:Size(), handle, transferid)
     if callbacks and callbacks["done"] then callbacks["done"](handle.message, handle) end
 end)
 
@@ -263,7 +268,7 @@ net.Receive("THORIUM_NETWORK_WHOLE", function(len, ply)
         printf("[THORIUM] p2p=%s", (CLIENT and from) and "yes" or "no")
         printf("[THORIUM] from=%s", tostring(from))
     end
-    hook.Run("Thorium_NetworkMessageReceived", handle.message, handle:Size())
+    hook.Run("Thorium_NetworkMessageReceived", handle.message, handle:Size(), handle)
 end)
 
 net.Receive("THORIUM_NETWORK_START", function(len, ply)
@@ -299,7 +304,7 @@ net.Receive("THORIUM_NETWORK_START", function(len, ply)
         return
     end
     queue_recv[transferid][6] = New(message)
-    hook.Run("Thorium_NetworkMessageBegin", message, size, transferid)
+    hook.Run("Thorium_NetworkMessageBegin", message, size, transferid, queue_recv[transferid][6])
 end)
 
 net.Receive("THORIUM_NETWORK_CHUNK", function(len, ply)
@@ -330,7 +335,7 @@ net.Receive("THORIUM_NETWORK_CHUNK", function(len, ply)
         data = util.Decompress(data)
     end
     item[6]:WriteRAW(data)
-    hook.Run("Thorium_NetworkMessageChunk", item[1], #data, transferid)
+    hook.Run("Thorium_NetworkMessageChunk", item[1], #data, size, transferid, item[6])
 end)
 
 net.Receive("THORIUM_NETWORK_END", function(len, ply)
@@ -354,8 +359,16 @@ net.Receive("THORIUM_NETWORK_END", function(len, ply)
         return
     end
     item[6]:Seek(0)
-    receivers[((CLIENT and item[5]) and "p2p_" or "")..item[1]](item[6], item[2], item[5])
-    hook.Run("Thorium_NetworkMessageEnd", item[1], item[6]:Size(), transferid)
+    local msg = ((CLIENT and item[5]) and "p2p_" or "")..item[1]
+    local receiver = receivers[msg]
+    if receiver then
+        receiver(item[6], item[2], item[5])
+    else
+        printf("[THORIUM] No receiver for message %s setup!", msg)
+        printf("[THORIUM] p2p=%s", (CLIENT and from) and "yes" or "no")
+        printf("[THORIUM] from=%s", tostring(from))
+    end
+    hook.Run("Thorium_NetworkMessageEnd", item[1], item[6]:Size(), transferid, item[6])
 end)
 
 ---A better abstraction over default garrysmod net: compatibility layer.
