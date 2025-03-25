@@ -90,17 +90,17 @@ end
 ---If callbacks table is supplied, function with key "done" gets called once every fragment of message was transmitted. (arguments are message and handle)
 ---Returns transfer id or nil, if transfer was completed immediately
 ---@param handle NetHandle|ByteBuffer NetNandle to send
----@param target Player|Entity|string Target to send the NetHandle to. 
+---@param target Player|Entity|"SERVER"|"BROADCAST"|nil Target to send the NetHandle to. 
 ---@param docompress? boolean Allow compression
 ---@param dochunk? boolean Allow chunking
----@param callbacks? table Callbacks table.
+---@param callbacks? table<function> Callbacks table.
 ---@return number|nil
 function gnet.Send(handle, target, docompress, dochunk, callbacks)
     if dochunk == nil then dochunk = handle:Size() > 2^13-1 end
     if docompress == nil then docompress = handle:Size() > 2^13-1 end
     handle:Seek(0)
     if not dochunk then
-        if handle:Size() > 2^16-1025 then -- 63kb, with safe margin
+        if handle:Size() > 2^14 then -- 16kb
             error("Too much data to send, consider chunking or compressing")
         end
         local has_target = CLIENT and not (target ~= nil or target ~= "SERVER" or target ~= game.GetWorld())
@@ -158,21 +158,30 @@ function gnet.Send(handle, target, docompress, dochunk, callbacks)
     return transferid
 end
 
----Adds a net message handler. Only one receiver can be used to receive the message <br>
----Callback arguments: function(handle: NetHandle, size: integer, from: Player|Entity|nil)
+---Adds a GNet message handler. Only one receiver can be used to receive the message
 ---@param message string
----@param callback function
+---@param callback fun(handle: NetHandle, size: integer, from: Player|nil)
 function gnet.Receive(message, callback)
     receivers[message] = callback
 end
 
+---Gets GNet message handler. Only one receiver can be used to receive the message
+---@param message string
+---@return fun(handle: NetHandle, size: integer, from: Player|nil) callback
+function gnet.GetReceiver(message)
+    return receivers[message]
+end
+
 --- Gets NetHandle by transfer ID. If you are going to use this function, please note that
 --- - it's your responsibility to keep pointer in the right place after your code returns.
---- - GNet network messages are not validated on other end
+--- - GNet network messages are not validated on other end, changing data in handle will result in corruption
 ---@param transid number
 ---@return NetHandle|nil
 function gnet.GetByTransferID(transid)
-    return queue_send[transid] or queue_recv[transid]
+    local send = queue_send[transid]
+    if send then return send[1] end
+    local recv = queue_recv[transid]
+    if recv then return recv[6] end
 end
 
 hook.Add("Think", "THORIUM_NETWORK_PROCESS_SEND_QUEUE", function()
@@ -184,7 +193,7 @@ hook.Add("Think", "THORIUM_NETWORK_PROCESS_SEND_QUEUE", function()
 
     net.Start("THORIUM_NETWORK_CHUNK")
         net.WriteUInt(transferid, 16)
-        local data = handle:ReadRAW(2^13-1) -- about 32kb
+        local data = handle:ReadRAW(2^13-1) -- about 8kb
         if compress then
             data = util.Compress(data)
         end
